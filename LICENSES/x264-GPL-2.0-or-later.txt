@@ -1,0 +1,1 @@
+x264 — GPL version 2 or later. Copyright (C) 2003-2025 x264 project. The GPL v2 text is in GPL-2.0.txt.
