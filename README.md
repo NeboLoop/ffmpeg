@@ -16,6 +16,7 @@ Nebo Media's own code is not part of it.
 | `SOURCES.md` | Every upstream release tarball the build uses, with its URL and sha256 (all unmodified) |
 | `buildinfo/<platform>.txt` | Each released platform's exact configure line |
 | `LICENSE`, `LICENSES/` | The GPL v2 text and the licences of every library in the build |
+| `models/rnnoise-lq.rnnn.gz` | The RNNoise model Nebo Media (0.5.2 and later) gives ffmpeg's `arnndn` filter at run time; see `SOURCES.md` |
 
 Each Nebo Media release has a GitHub release here tagged `nebo-media-<version>`
 whose asset `nebo-media-ffmpeg-source-<version>.tar.gz` holds every upstream
@@ -32,6 +33,17 @@ the script). The result is written to `vendor/<triple>/`.
 
 To use your own build with Nebo Media, put `ffmpeg` and `ffprobe` in one
 folder and set `NEBO_MEDIA_FFMPEG_DIR` to that folder.
+
+## The RNNoise model
+
+Since Nebo Media 0.5.2 the build includes FFmpeg's `arnndn` filter, and Nebo
+Media passes it the RNNoise model `lq.rnnn` ("leavened-quisling", from
+Gregor Richards' rnnoise-models). The model is data read by the filter at run
+time, not part of the ffmpeg build: Nebo Media embeds it gzip-compressed and
+writes it beside ffmpeg. `models/rnnoise-lq.rnnn.gz` is that exact file;
+`SOURCES.md` gives its upstream URL and both sha256s. Its README
+(`LICENSES/rnnoise-models-README.txt`) states the model is not subject to
+copyright.
 
 ## Licence and patents
 

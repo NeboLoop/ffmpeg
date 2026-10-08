@@ -53,7 +53,7 @@ configure:
   --enable-muxer=mp4,mov,ipod,webm,matroska,gif,image2,mp3,wav,adts,rawvideo,null
   --enable-decoder=libdav1d,h264,hevc,vp8,vp9,mpeg4,mpeg2video,mpeg1video,h263,mjpeg,prores,png,apng,gif,webp,bmp,tiff,rawvideo,aac,aac_latm,mp3,mp3float,mp2,opus,vorbis,flac,alac,ac3,eac3,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,pcm_mulaw,pcm_alaw,wmav2
   --enable-encoder=aac,libmp3lame,libopus,libvpx_vp9,libsvtav1,libx264,libx265,prores_ks,pcm_s16le,png,gif,mjpeg,rawvideo,wrapped_avframe
-  --enable-filter=scale,crop,pad,fps,format,setsar,setdar,setpts,trim,concat,overlay,split,palettegen,paletteuse,colorchannelmixer,fade,null,color,atrim,asetpts,aresample,aformat,amix,volume,sidechaincompress,asplit,loudnorm,afade,apad,anull,anullsrc,aloop,testsrc,testsrc2,sine,highpass,afftdn,deesser,tpad,scdet,xstack,transpose,hflip,vflip,xfade,acrossfade,atempo,silencedetect,adelay,alphamerge,loop,select,lut3d,deshake,asetrate,chromakey,colorkey,minterpolate,zscale,tonemap,colorspace,setparams,vidstabdetect,vidstabtransform,rubberband,unsharp
+  --enable-filter=scale,crop,pad,fps,format,setsar,setdar,setpts,trim,concat,overlay,split,palettegen,paletteuse,colorchannelmixer,fade,null,color,atrim,asetpts,aresample,aformat,amix,volume,sidechaincompress,asplit,loudnorm,afade,apad,anull,anullsrc,aloop,testsrc,testsrc2,sine,highpass,afftdn,deesser,tpad,scdet,xstack,transpose,hflip,vflip,xfade,acrossfade,atempo,silencedetect,adelay,alphamerge,loop,select,lut3d,deshake,asetrate,chromakey,colorkey,minterpolate,zscale,tonemap,colorspace,setparams,vidstabdetect,vidstabtransform,rubberband,unsharp,lowpass,agate,arnndn
   --enable-parsers
   --enable-bsfs
   --extra-ldflags=-static-libgcc -static-libstdc++

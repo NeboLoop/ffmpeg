@@ -17,3 +17,12 @@ Every source is an unmodified upstream release tarball, checked against its sha2
 | zimg | 3.0.6 | https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.6.tar.gz | `be89390f13a5c9b2388ce0f44a5e89364a20c1c57ce46d382b1fcc3967057577` |
 | nvcodec | 13.0.19.0 | https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n13.0.19.0.tar.gz | `86d15d1a7c0ac73a0eafdfc57bebfeba7da8264595bf531cf4d8db1c22940116` |
 | zlib | 1.3.2 | https://zlib.net/fossils/zlib-1.3.2.tar.gz | `bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16` |
+
+## RNNoise model (Nebo Media 0.5.2 and later)
+
+Not compiled into ffmpeg: the model file Nebo Media passes to the `arnndn` filter at run time, shipped unmodified (gzip-compressed) as `models/rnnoise-lq.rnnn.gz`. Not subject to copyright (`LICENSES/rnnoise-models-README.txt`).
+
+| Name | Version | URL | sha256 |
+|------|---------|-----|--------|
+| rnnoise-models lq.rnnn ("leavened-quisling") | 2018-08-31 (repository commit 3eee541a283fd3b8f81b85b1748e3b9ccbefa04d) | https://raw.githubusercontent.com/GregorR/rnnoise-models/3eee541a283fd3b8f81b85b1748e3b9ccbefa04d/leavened-quisling-2018-08-31/lq.rnnn | `1957528b752799fddf06270bc5469af7cf54c3badc358544ae2abed730943ff9` |
+| `models/rnnoise-lq.rnnn.gz` (the file as shipped) | | | `b226212447747a772504cf8410ad5a31e6a87567eab2722a92a8129ee7f5511d` |
