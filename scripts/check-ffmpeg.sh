@@ -12,7 +12,13 @@
 # into the binary say GPL v2+, with no --enable-nonfree/--enable-version3
 # and no nonfree library (fdk-aac, CUDA NVCC/SDK, NPP).
 # When this machine can run the binary: ffmpeg -version, -L and -encoders
-# say the same. When it has the tool: the binary links only OS libraries.
+# say the same, and every filter, codec, format and hardware decoder the
+# build asks for is in it. When it has the tool: the binary links only OS
+# libraries.
+# The other half, that the build's lists carry every filter, format, encoder
+# and hardware decoder the code names, needs only the source:
+# crates/cli/tests/bundled_ffmpeg.rs checks it in every cargo test, on any
+# machine, against the same lists.
 set -euo pipefail
 
 TRIPLE="${1:-}"
@@ -22,6 +28,12 @@ DIR="$ROOT/vendor/$TRIPLE"
 EXE=""; [[ "$TRIPLE" == *windows* ]] && EXE=".exe"
 
 die() { printf 'LICENSE CHECK FAILED (%s): %s\n' "$TRIPLE" "$*" >&2; exit 1; }
+
+# build-ffmpeg.sh's FILTERS, one name per line (it lists them one per line,
+# each with a comment).
+filter_list() {
+  sed -n '/^FILTERS=(/,/^)/p' "$ROOT/scripts/build-ffmpeg.sh" | sed -e '1d' -e '$d' -e 's/#.*//' | tr -s ' \t' '\n' | sed '/^$/d'
+}
 
 [[ -f "$DIR/ffmpeg$EXE.gz" && -f "$DIR/ffprobe$EXE.gz" ]] || die "vendor/$TRIPLE has no ffmpeg/ffprobe"
 TMP="$(mktemp -d)"
@@ -73,7 +85,9 @@ if runnable; then
   echo "encoders: $("$FF" -hide_banner -encoders | awk 'NR>10 && $1 ~ /^[VA]/ {print $2}' | tr '\n' ' ')"
   # Every component the build asks for is really in the binary: configure
   # drops one silently when its dependency is missing.
-  list() { sed -n "s/^$1=//p" "$ROOT/scripts/build-ffmpeg.sh" | tr ',' ' '; }
+  list() {
+    if [[ "$1" == FILTERS ]]; then filter_list; else sed -n "s/^$1=//p" "$ROOT/scripts/build-ffmpeg.sh" | tr ',' ' '; fi
+  }
   have() { # have <-flag> <first column pattern>: the names the binary lists
     "$FF" -hide_banner "$1" 2>/dev/null | awk -v pat="$2" '$1 ~ pat {print $2}' | tr ',-' '\n_'
   }
@@ -100,8 +114,29 @@ if runnable; then
   esac
   got="$(have -encoders '^[VAS][.A-Z]+$')"
   for n in $platform_enc; do grep -qx "$n" <<<"$got" || missing="$missing ENCODERS:$n"; done
+  # Each platform's hardware decoders (build-ffmpeg.sh's HWACCELS_*): the
+  # method in -hwaccels, and every codec's decoder offering it.
+  case "$TRIPLE" in
+    *apple-darwin) platform_hw="videotoolbox:h264,hevc,prores" ;;
+    x86_64-unknown-linux-gnu) platform_hw="cuda:h264,hevc" ;;
+    *linux-gnu) platform_hw="" ;;
+    *windows*) platform_hw="d3d11va:h264,hevc cuda:h264,hevc" ;;
+  esac
+  methods="$("$FF" -hide_banner -hwaccels | tail -n +2)"
+  for entry in $platform_hw; do
+    method="${entry%%:*}"
+    grep -qx "$method" <<<"$methods" || missing="$missing HWACCELS:$method"
+    for codec in $(tr ',' ' ' <<<"${entry#*:}"); do
+      "$FF" -hide_banner -h "decoder=$codec" | sed -n 's/^ *Supported hardware devices://p' | tr ' ' '\n' | grep -qx "$method" \
+        || missing="$missing HWACCELS:${codec}_$method"
+    done
+  done
   [[ -z "$missing" ]] || die "components missing from the build:$missing"
-  echo "components: every filter, decoder, encoder, demuxer and muxer asked for is present"
+  echo "components: every filter, decoder, encoder, demuxer, muxer and hardware decoder asked for is present"
+  # HDR delivery (HDR10, HLG, Dolby Vision 8.x) needs x265's Main 10.
+  "$FF" -hide_banner -h encoder=libx265 2>/dev/null | grep -q 'yuv420p10le' \
+    || die "libx265 encodes only 8-bit: HDR delivery needs its Main 10 library (build_x265)"
+  echo "x265: 8- and 10-bit"
 else
   echo "(this machine cannot run $TRIPLE binaries; checked the strings baked into them)"
 fi

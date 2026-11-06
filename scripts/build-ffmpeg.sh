@@ -17,13 +17,17 @@
 # Video encoders:
 #   H.264   x264 (GPL-2.0+), and the OS's own: VideoToolbox (macOS), Media
 #           Foundation (Windows), NVIDIA NVENC (Linux x86_64, Windows)
-#   HEVC    x265 (GPL-2.0+, cmake), VideoToolbox, Media Foundation, NVENC
+#   HEVC    x265 (GPL-2.0+, cmake), built 8- and 10-bit in one library
+#           (Main for SDR, Main 10 for HDR10, HLG and Dolby Vision 8.x);
+#           VideoToolbox, Media Foundation, NVENC
 #   AV1     SVT-AV1 (BSD-3-Clause-Clear + AOMedia Patent License 1.0, cmake);
 #           decoded by dav1d (BSD-2-Clause, meson + ninja)
 #   ProRes  prores_ks everywhere, VideoToolbox on macOS
 #   VP9     libvpx (BSD-3-Clause), with Opus audio via libopus (BSD-3)
-# NVENC comes through nv-codec-headers (MIT, header only: the driver is
-# loaded at run time, nothing is linked). MP3 is libmp3lame (LGPL-2.0). AAC
+# Hardware decoding (H.264 and HEVC; ProRes too on macOS): VideoToolbox
+# (macOS), D3D11VA (Windows), NVIDIA NVDEC (Linux x86_64, Windows).
+# NVENC and NVDEC come through nv-codec-headers (MIT, header only: the driver
+# is loaded at run time, nothing is linked). MP3 is libmp3lame (LGPL-2.0). AAC
 # is ffmpeg's native encoder. Filters with libraries: zscale (zimg, WTFPL,
 # autotools) for HDR to SDR, vidstabdetect/vidstabtransform (vid.stab,
 # GPL-2.0+, cmake), rubberband (Rubber Band, GPL-2.0+, meson, built-in FFT
@@ -58,19 +62,25 @@ OUT="$ROOT/vendor/$TRIPLE"
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}"
 
 # ---- Pinned sources ---------------------------------------------------------
-# name|version|url|sha256
+# name|version|url [url ...]|sha256
+# A source with several urls (mirrors of one file) is tried in order until one
+# gives the pinned sha256.
 # x264 has no release tarballs and GitLab regenerates its archives with a new
-# hash on every download, so it comes from Debian's permanent snapshot of the
-# same commit (its .orig tarball: the identical tree, unmodified).
+# hash on every download, so it comes from Debian's .orig tarball of the same
+# commit (the identical tree, unmodified): Debian's permanent snapshot, then
+# the Ubuntu archive and Launchpad, which carry the same file.
 # ffmpeg's sha256 was taken from a tarball whose .asc verified against the
 # FFmpeg release signing key (FCF986EA15E6E293A5644F10B4322F04D67658D8).
+# ffmpeg.org drops connections from the house runners now and then, so the
+# same tarball also comes from Debian's pool (its .orig is the release
+# tarball, unmodified), Alpine's distfiles and the OSUOSL mirror.
 FFMPEG_VERSION=9.0.2
 SOURCES=(
-  "ffmpeg|$FFMPEG_VERSION|https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz|8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
+  "ffmpeg|$FFMPEG_VERSION|https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz https://deb.debian.org/debian/pool/main/f/ffmpeg/ffmpeg_$FFMPEG_VERSION.orig.tar.xz https://distfiles.alpinelinux.org/distfiles/edge/ffmpeg-$FFMPEG_VERSION.tar.xz https://ftp.osuosl.org/pub/blfs/conglomeration/ffmpeg/ffmpeg-$FFMPEG_VERSION.tar.xz|8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
   "lame|4.0|https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz|3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb"
   "libvpx|1.17.0|https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz|1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a"
   "opus|1.5.2|https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz|65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1"
-  "x264|b35605ace3ddf7c1a5d67a2eb553f034aef41d55|https://snapshot.debian.org/archive/debian/20250915T203450Z/pool/main/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz|4672fb415c34bf16e2ed9cd43d1ab865158f586c7f1406d507f7f44516fb5ec8"
+  "x264|b35605ace3ddf7c1a5d67a2eb553f034aef41d55|https://snapshot.debian.org/archive/debian/20250915T203450Z/pool/main/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz https://archive.ubuntu.com/ubuntu/pool/universe/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/x264/2:0.165.3222+gitb35605ac-3/x264_0.165.3222+gitb35605ac.orig.tar.gz|4672fb415c34bf16e2ed9cd43d1ab865158f586c7f1406d507f7f44516fb5ec8"
   "x265|4.2|https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz|40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210"
   "vidstab|1.1.2|https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.2.tar.gz|96db34d48a9e3aa13736a48744b56dfb76731ac9bb5193c716de8534c9fd709d"
   "rubberband|4.0.0|https://breakfastquay.com/files/releases/rubberband-4.0.0.tar.bz2|af050313ee63bc18b35b2e064e5dce05b276aaf6d1aa2b8a82ced1fe2f8028e9"
@@ -101,22 +111,34 @@ source_field() { # source_field <name> <index>
   die "unknown source $1"
 }
 
+# fetch <file> <sha256> <url> [url ...]: downloads <file> from the first url
+# that gives the pinned sha256 (kept when it already does). Each url gets a
+# few tries, a dropped connection included (a slow ffmpeg.org drops the TLS
+# handshake, which curl's plain --retry doesn't retry), before the next.
+fetch() {
+  local file="$1" sha="$2" u got; shift 2
+  [[ -f "$file" && "$(sha256 "$file")" == "$sha" ]] && return 0
+  for u in "$@"; do
+    log "download $u"
+    if curl -fL --retry 4 --retry-all-errors --retry-delay 10 --connect-timeout 30 -o "$file.part" "$u"; then
+      got="$(sha256 "$file.part")"
+      [[ "$got" == "$sha" ]] && { mv "$file.part" "$file"; return 0; }
+      log "sha256 mismatch from $u (got $got, want $sha)"
+    fi
+    rm -f "$file.part"
+  done
+  die "$(basename "$file"): no url gave sha256 $sha"
+}
+
 # fetch_and_unpack <name>: downloads (cached), verifies, unpacks to $SRC/<name>.
 fetch_and_unpack() {
-  local name="$1" version url sha file dir
+  local name="$1" version urls sha file dir
   version="$(source_field "$name" version)"
-  url="$(source_field "$name" url)"
+  read -r -a urls <<<"$(source_field "$name" url)"
   sha="$(source_field "$name" sha)"
-  file="$DL/$name-$version.tar.${url##*.tar.}"
+  file="$DL/$name-$version.tar.${urls[0]##*.tar.}"
   mkdir -p "$DL" "$SRC"
-  if [[ ! -f "$file" ]] || [[ "$(sha256 "$file")" != "$sha" ]]; then
-    log "download $name $version"
-    curl -fL --retry 3 -o "$file.part" "$url"
-    mv "$file.part" "$file"
-  fi
-  local got
-  got="$(sha256 "$file")"
-  [[ "$got" == "$sha" ]] || die "$name: sha256 mismatch (got $got, want $sha)"
+  fetch "$file" "$sha" "${urls[@]}"
   dir="$SRC/$name"
   rm -rf "$dir"
   mkdir -p "$dir"
@@ -339,17 +361,30 @@ build_x264() {
 
 build_x265() {
   fetch_and_unpack x265
-  log "x265"
+  log "x265 (8- and 10-bit)"
   (cd "$SRC/x265"
    cmake_target
    local extra=(-DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_HDR10_PLUS=OFF)
    [[ "$ARCH" == x86_64 ]] && extra+=(-DCMAKE_ASM_NASM_COMPILER=nasm)
-   rm -rf _build
+   rm -rf _build _build10
+   # Main 10 first, as a library of its own (its API kept internal), then the
+   # 8-bit library linked to it: one libx265 that encodes either depth, the
+   # depth picked by the pixel format ffmpeg hands it (yuv420p or
+   # yuv420p10le). HDR delivery (HDR10, HLG, Dolby Vision 8.x) needs Main 10.
    CC="${CC%% *}" CXX="${CXX%% *}" CFLAGS="-O2 -fPIC" CXXFLAGS="-O2 -fPIC" LDFLAGS="" \
-     cmake -S source -B _build "${CMAKE_T[@]}" "${extra[@]}"
+     cmake -S source -B _build10 "${CMAKE_T[@]}" "${extra[@]}" -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF
+   cmake --build _build10 -j "$JOBS"
+   CC="${CC%% *}" CXX="${CXX%% *}" CFLAGS="-O2 -fPIC" CXXFLAGS="-O2 -fPIC" LDFLAGS="" \
+     cmake -S source -B _build "${CMAKE_T[@]}" "${extra[@]}" -DLINKED_10BIT=ON \
+       -DEXTRA_LIB="x265_main10.a" -DEXTRA_LINK_FLAGS="-L$SRC/x265/_build10"
    cmake --build _build -j "$JOBS"
    cmake --install _build
-   pc_cxx x265)
+   cp _build10/libx265.a "$PREFIX/lib/libx265_main10.a"
+   pc_cxx x265
+   # The 8-bit library calls into the 10-bit one, so it links after it
+   # (pc_cxx left the C++ runtime after -lx265, so a space follows it).
+   sed -i.bak -e '/^Libs:/s|-lx265 |-lx265 -lx265_main10 |' "$PREFIX/lib/pkgconfig/x265.pc"
+   grep -q -- '-lx265_main10' "$PREFIX/lib/pkgconfig/x265.pc" || die "x265.pc does not link the 10-bit library")
 }
 
 build_vidstab() {
@@ -395,27 +430,155 @@ build_nvcodec() {
   (cd "$SRC/nvcodec" && make PREFIX="$PREFIX" LIBDIR=lib install)
 }
 
-# NVENC where NVIDIA's drivers exist for desktops: Linux x86_64 and Windows.
+# NVENC and NVDEC where NVIDIA's drivers exist for desktops: Linux x86_64 and Windows.
 NVENC=""
 [[ "$OS" == windows || ( "$OS" == linux && "$ARCH" == x86_64 ) ]] && NVENC=1
 
 # ---- ffmpeg -----------------------------------------------------------------
 # Only what nebo-media's commands use; everything else stays out.
 DEMUXERS=ffmetadata,rawvideo,ivf,mov,matroska,avi,mp3,aac,wav,flac,ogg,gif,image2,image_png_pipe,image_jpeg_pipe,image_webp_pipe,image_bmp_pipe,image_tiff_pipe,concat,mpegts,mpegps,flv,ac3,eac3,h264,hevc,m4v,asf
-MUXERS=mp4,mov,ipod,webm,matroska,gif,image2,mp3,wav,adts,rawvideo,null
+MUXERS=mp4,mov,ipod,webm,matroska,gif,image2,image2pipe,mp3,wav,flac,adts,rawvideo,null
 DECODERS=libdav1d,h264,hevc,vp8,vp9,mpeg4,mpeg2video,mpeg1video,h263,mjpeg,prores,png,apng,gif,webp,bmp,tiff,rawvideo,aac,aac_latm,mp3,mp3float,mp2,opus,vorbis,flac,alac,ac3,eac3,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,pcm_mulaw,pcm_alaw,wmav2
-ENCODERS=aac,libmp3lame,libopus,libvpx_vp9,libsvtav1,libx264,libx265,prores_ks,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,png,gif,mjpeg,rawvideo,wrapped_avframe
-FILTERS=scale,crop,pad,fps,format,setsar,setdar,setpts,trim,concat,overlay,split,palettegen,paletteuse,colorchannelmixer,fade,null,color,atrim,asetpts,aresample,aformat,amix,volume,sidechaincompress,asplit,loudnorm,afade,apad,anull,anullsrc,aloop,testsrc,testsrc2,sine,highpass,afftdn,deesser,tpad,scdet,xstack,transpose,hflip,vflip,xfade,acrossfade,atempo,silencedetect,adelay,alphamerge,loop,select,lut3d,deshake,asetrate,chromakey,colorkey,minterpolate,zscale,tonemap,colorspace,setparams,vidstabdetect,vidstabtransform,rubberband,unsharp,lowpass,agate,arnndn
+ENCODERS=aac,libmp3lame,libopus,libvpx_vp9,libsvtav1,libx264,libx265,prores_ks,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,flac,png,gif,mjpeg,rawvideo,wrapped_avframe
+# Filters: one per line, in groups, each with what uses it, so none is pruned
+# as "unused" again (scripts/check-ffmpeg.sh holds the binary to this list;
+# crates/cli/tests/bundled_ffmpeg.rs fails a cargo test, on any machine, when
+# the code names a filter it leaves out). Add a filter on its own
+# line, in its group, sorted.
+FILTERS=(
+  # Picture: shape, timing and pixels (every render: compose, edit, video, pipe)
+  concat             # video join, compose's segments, edit's cuts
+  crop               # video crop, reframe, compose's fit
+  fps                # every render's frame rate
+  format             # pixel formats in every graph
+  loop               # held frames: compose, cutdown, endings
+  null               # pass-through branches
+  overlay            # compose's layers, logos, picture in picture
+  pad                # letterbox, image and video size presets
+  scale              # every resize
+  select             # end-to-end tests: frames picked from a render
+  setdar             # display aspect (kept from the first build)
+  setpts             # speed changes, segment starts
+  setsar             # square pixels before every overlay
+  split              # one picture to several branches (edit, video)
+  tpad               # a clip held or padded to its slot
+  trim               # every cut
+  xstack             # compose's blended layers (the picture under one beside it, read in Rust); grids
+  # Picture: transitions, looks and repair
+  alphamerge         # compose's masks
+  blend              # compose's rounded corners on deep (16-bit) pictures
+  colorchannelmixer  # compose's opacity and tints
+  deshake            # video stabilize (quick)
+  fade               # fades in and out, endings
+  lutyuv             # compose's layer opacity on deep (16-bit) pictures
+  lut3d              # video grade, looks, compose's color
+  minterpolate       # compose's smooth slow motion
+  palettegen         # GIF export
+  paletteuse         # GIF export
+  scdet              # scene cuts: shots, check's flash_frame and level_jump
+  showinfo           # live preview: each decoded frame's time
+  unsharp            # a grade's sharpen and clarity
+  vidstabdetect      # video stabilize (two-pass)
+  vidstabtransform   # video stabilize (two-pass)
+  xfade              # video join's crossfades
+  # Picture: color and HDR
+  colorspace         # color conversions
+  hue                # end-to-end test fixtures: a tinted phone clip
+  setparams          # color tags on SDR output
+  sidedata           # drops a source's HDR10 metadata that the run replaces
+  tonemap            # HDR to SDR
+  zscale             # HDR to SDR
+  # Picture: kept from the first build (no caller in the code today)
+  chromakey          # green screen
+  colorkey           # green screen
+  hflip              # mirror
+  transpose          # rotate
+  vflip              # flip
+  # Picture: effects (finishing PRD section 13)
+  gblur              # privacy blur that follows; a grade's blur
+  noise              # a grade's grain
+  vignette           # a grade's vignette
+  # Picture: denoise and deband (finishing PRD 10.2 item 10, parity audit; grade's denoise and deband)
+  deband             # a grade's deband, at 16 bits before the one dither
+  hqdn3d             # a grade's denoise (temporal, any bit depth)
+  nlmeans            # high-quality video denoise
+  # Picture: analysis (parity audit)
+  showspectrum       # a spectrum picture of the sound
+  # Sources: generated pictures and sound
+  aevalsrc           # end-to-end test fixtures: a rising tone
+  anullsrc           # silence: gaps, voice-over starts, compose's beds
+  cellauto           # end-to-end test fixtures: distinct moving phone clips
+  color              # compose's backgrounds, cards, the canvas; a blended layer's clear canvas
+  gradients          # end-to-end test fixtures: distinct moving phone clips
+  life               # end-to-end test fixtures: distinct moving phone clips
+  mandelbrot         # end-to-end test fixtures: distinct moving phone clips
+  sine               # end-to-end test fixtures
+  testsrc            # end-to-end test fixtures
+  testsrc2           # end-to-end test fixtures
+  # Sound: shape, timing and mixing (every render with sound)
+  acrossfade         # audio join's crossfades
+  adelay             # a layer's sound placed at its start; robot and echo voice effects
+  afade              # sound fades
+  aformat            # sample formats in every graph
+  aloop              # looped music (kept from the first build)
+  amix               # compose's mix, voice-over; robot and echo voice effects; normalize's difference (null) render
+  anull              # pass-through branches
+  apad               # sound padded to its picture
+  aresample          # rates, 4x oversampling for the true-peak limiter, TPDF dither to 16 bits
+  asetpts            # sound timestamps after a cut
+  asetrate           # pitch with speed (audio speed)
+  asplit             # one sound to several branches (voice finish, dialogue, robot and echo)
+  atempo             # audio speed, compose's speed changes
+  atrim              # every sound cut
+  sidechaincompress  # ducking music under the voice
+  volume             # every gain
+  # Sound: cleanup, EQ and dynamics (audio clean, voice finish, EQ Match)
+  aeval              # compose's fades on a clip's own sound; the robot voice effect
+  afftdn             # noise reduction
+  agate              # dialogue isolation's gate
+  alimiter           # the one peak limiter (filters::limiter): true-peak hold, voice finish
+  arnndn             # dialogue isolation (RNNoise model)
+  deesser            # voice finish
+  equalizer          # voice finish EQ; phone and megaphone voice effects; the repair assistant's hum notches
+  firequalizer       # EQ Match
+  highpass           # rumble cut; radio, phone and megaphone voice effects; the repair assistant's wind cut
+  highshelf          # voice finish EQ
+  lowpass            # dialogue isolation; radio, phone and megaphone voice effects
+  lowshelf           # voice finish EQ (finishing PRD 3.B)
+  rubberband         # audio speed and pitch at high quality; chipmunk and deep voice effects
+  silencedetect      # silences (kept from the first build)
+  # Sound: the one meter (meter.rs) and clipping in check
+  ametadata          # prints ebur128's readings
+  astats             # check's clipping
+  ebur128            # loudness, true peak, sample peak, range: every measurement
+  # Sound: effects (finishing PRD section 13)
+  afir               # room match (impulse responses)
+  asoftclip          # voice effects
+  # Sound: repair and mixing (parity audit)
+  acompressor        # compression: the radio voice effect; normalize's loudness range per content type
+  pan                # channel mapping, mono to stereo; check's mono fold-down (phase)
+  stereotools        # stereo width, mid/side
+)
 PROTOCOLS=file,pipe
+
+# Hardware decoders (hwaccels) on each platform. --disable-everything turns
+# them all off, so each is named. VideoToolbox and D3D11VA are OS APIs; NVDEC
+# loads NVIDIA's driver at run time through the same nv-codec-headers as NVENC
+# (nothing linked, nothing nonfree). FFmpeg's own -hwaccel d3d11va runs the
+# d3d11va2 ones. scripts/check-ffmpeg.sh checks the finished binary has each.
+HWACCELS_DARWIN=h264_videotoolbox,hevc_videotoolbox,prores_videotoolbox
+HWACCELS_WINDOWS=h264_d3d11va,h264_d3d11va2,hevc_d3d11va,hevc_d3d11va2
+HWACCELS_NVDEC=h264_nvdec,hevc_nvdec
 
 configure_ffmpeg() {
   local platform=()
   case "$OS" in
-    darwin)  platform=(--enable-videotoolbox --enable-encoder=h264_videotoolbox,hevc_videotoolbox,prores_videotoolbox) ;;
+    darwin)  platform=(--enable-videotoolbox --enable-encoder=h264_videotoolbox,hevc_videotoolbox,prores_videotoolbox
+                       --enable-hwaccel="$HWACCELS_DARWIN") ;;
     linux)   platform=(--extra-ldflags="-static-libgcc -static-libstdc++" --extra-libs="-lpthread -lm -ldl") ;;
     # FFmpeg 9's Media Foundation encoder is built on D3D11 (an OS API).
-    windows) platform=(--enable-mediafoundation --enable-d3d11va --enable-encoder=h264_mf,hevc_mf --enable-w32threads \
-                       --extra-ldflags="-static -static-libgcc") ;;
+    windows) platform=(--enable-mediafoundation --enable-d3d11va --enable-encoder=h264_mf,hevc_mf --enable-w32threads
+                       --enable-hwaccel="$HWACCELS_WINDOWS" --extra-ldflags="-static -static-libgcc") ;;
   esac
   FF_CONFIGURE=(
     --prefix="$PREFIX"
@@ -433,11 +596,12 @@ configure_ffmpeg() {
     --enable-protocol="$PROTOCOLS"
     --enable-demuxer="$DEMUXERS" --enable-muxer="$MUXERS"
     --enable-decoder="$DECODERS" --enable-encoder="$ENCODERS"
-    --enable-filter="$FILTERS"
+    --enable-filter="$(IFS=,; echo "${FILTERS[*]}")"
     --enable-parsers --enable-bsfs
     "${platform[@]}"
   )
-  [[ -n "$NVENC" ]] && FF_CONFIGURE+=(--enable-ffnvcodec --enable-nvenc --enable-encoder=h264_nvenc,hevc_nvenc,av1_nvenc)
+  [[ -n "$NVENC" ]] && FF_CONFIGURE+=(--enable-ffnvcodec --enable-nvenc --enable-encoder=h264_nvenc,hevc_nvenc,av1_nvenc
+                                       --enable-nvdec --enable-hwaccel="$HWACCELS_NVDEC")
   return 0
 }
 
@@ -470,6 +634,21 @@ check_license() {
   done
   if grep -Eq '^#define CONFIG_(NONFREE|VERSION3|LIBFDK_AAC|CUDA_NVCC|CUDA_SDK|LIBNPP)[A-Z_]* 1' "$ff/config.h"; then
     die "config.h enables a nonfree or GPLv3-only component"
+  fi
+}
+
+# Every filter name this FFmpeg has (built or not) is kept in the repo, in
+# scripts/ffmpeg-filter-names.txt, so crates/cli/tests/bundled_ffmpeg.rs can
+# tell the code's filter names from other words in any cargo test, with no
+# ffmpeg built. Read from the source on every run, a cached build too: a new
+# FFmpeg rewrites the list and stops here until the new list is committed.
+check_filter_catalog() {
+  local catalog="$ROOT/scripts/ffmpeg-filter-names.txt" names
+  names="$(sed -n 's/^extern const FFFilter ff_[av]\{1,2\}[a-z]*_\([a-z0-9_]*\);/\1/p' "$SRC/ffmpeg/libavfilter/allfilters.c" | LC_ALL=C sort -u)"
+  [[ -n "$names" ]] || die "libavfilter/allfilters.c names no filters"
+  if [[ ! -f "$catalog" || "$names" != "$(cat "$catalog")" ]]; then
+    printf '%s\n' "$names" > "$catalog"
+    die "scripts/ffmpeg-filter-names.txt did not match ffmpeg $FFMPEG_VERSION's filters: rewrote it; commit it and run again"
   fi
 }
 
@@ -525,12 +704,13 @@ stage svtav1 "$(dep_key svtav1)" build_svtav1
 stage zimg "$(dep_key zimg)" build_zimg
 [[ -n "$NVENC" ]] && stage nvcodec "$(dep_key nvcodec)" build_nvcodec
 stage x264 "$(dep_key x264)" build_x264
-stage x265 "$(dep_key x265)" build_x265
+stage x265 "$(dep_key x265) main+main10" build_x265
 stage vidstab "$(dep_key vidstab)" build_vidstab
 stage rubberband "$(dep_key rubberband)" build_rubberband
 configure_ffmpeg
 stage ffmpeg "$(dep_key ffmpeg) $(printf '%s ' "${FF_CONFIGURE[@]}" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d' ' -f1)" build_ffmpeg
 check_license
+check_filter_catalog
 package
 log "license and link check"
 "$ROOT/scripts/check-ffmpeg.sh" "$TRIPLE"

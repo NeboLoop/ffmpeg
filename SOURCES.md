@@ -1,14 +1,14 @@
 # Pinned upstream sources
 
-Every source is an unmodified upstream release tarball, checked against its sha256 by `scripts/build-ffmpeg.sh`.
+Every source is an unmodified upstream release tarball, checked against its sha256 by `scripts/build-ffmpeg.sh`. Where a row lists several URLs, they are mirrors of the same file, tried in order until one gives that sha256.
 
-| Name | Version | URL | sha256 |
+| Name | Version | URL(s) | sha256 |
 |------|---------|-----|--------|
-| ffmpeg | 9.0.2 | https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz | `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e` |
+| ffmpeg | 9.0.2 | https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz, https://deb.debian.org/debian/pool/main/f/ffmpeg/ffmpeg_9.0.2.orig.tar.xz, https://distfiles.alpinelinux.org/distfiles/edge/ffmpeg-9.0.2.tar.xz, https://ftp.osuosl.org/pub/blfs/conglomeration/ffmpeg/ffmpeg-9.0.2.tar.xz | `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e` |
 | lame | 4.0 | https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz | `3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb` |
 | libvpx | 1.17.0 | https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz | `1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a` |
 | opus | 1.5.2 | https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz | `65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1` |
-| x264 | b35605ace3ddf7c1a5d67a2eb553f034aef41d55 | https://snapshot.debian.org/archive/debian/20250915T203450Z/pool/main/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz | `4672fb415c34bf16e2ed9cd43d1ab865158f586c7f1406d507f7f44516fb5ec8` |
+| x264 | b35605ace3ddf7c1a5d67a2eb553f034aef41d55 | https://snapshot.debian.org/archive/debian/20250915T203450Z/pool/main/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz, https://archive.ubuntu.com/ubuntu/pool/universe/x/x264/x264_0.165.3222%2Bgitb35605ac.orig.tar.gz, https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/x264/2:0.165.3222+gitb35605ac-3/x264_0.165.3222+gitb35605ac.orig.tar.gz | `4672fb415c34bf16e2ed9cd43d1ab865158f586c7f1406d507f7f44516fb5ec8` |
 | x265 | 4.2 | https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz | `40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210` |
 | vidstab | 1.1.2 | https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.2.tar.gz | `96db34d48a9e3aa13736a48744b56dfb76731ac9bb5193c716de8534c9fd709d` |
 | rubberband | 4.0.0 | https://breakfastquay.com/files/releases/rubberband-4.0.0.tar.bz2 | `af050313ee63bc18b35b2e064e5dce05b276aaf6d1aa2b8a82ced1fe2f8028e9` |
